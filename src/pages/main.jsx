@@ -1,6 +1,6 @@
 import React from "react";
 import Slider from "../components/slider";
-
+import { Link } from "react-router-dom";
 const Main = () => {
   return (
     <div>
@@ -16,7 +16,7 @@ const Main = () => {
     <div className="container">
       <h1 className="display-4 fw-bold mb-4">Забота о ваших питомцах</h1>
       <p className="lead mb-4">Найдите надежных ситтеров, выгульщиков и ветеринаров для ваших любимцев</p>
-      <a className="btn btn-light btn-lg px-4" href="register.html">Начать сейчас</a>
+      <Link className="btn btn-light btn-lg px-4" to="/register">Начать сейчас</Link>
     </div>
   </section>
   <Slider/>
