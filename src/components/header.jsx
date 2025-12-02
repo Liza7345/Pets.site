@@ -29,7 +29,7 @@ const Header = () => {
           </ul>
         </li>
         <li className="nav-item">
-          <a className="nav-link" href="search.html">Поиск животных</a>
+          <Link className="nav-link" to="/search">Поиск животных</Link>
         </li>
       </ul>
       <form className="d-flex">

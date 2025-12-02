@@ -5,6 +5,7 @@ import Footer from "./components/footer";
 import Main from "./pages/main";
 import About from "./pages/about";
 import Register from "./pages/register";
+import Search from "./pages/search";
 function App() {
   return (
     <div className="App">
@@ -13,6 +14,7 @@ function App() {
         <Route path={'/'} element={<Main/>}/>
         <Route path={'/about'} element={<About/>}/>
         <Route path={'/register'} element={<Register/>}/>
+        <Route path={'/search'} element={<Search/>}/>
         </Routes>
       <Footer/>
     </div>
