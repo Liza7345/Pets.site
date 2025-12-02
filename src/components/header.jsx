@@ -41,6 +41,7 @@ const Header = () => {
       </button>
     </div>
   </div>
+  <LoginModal />
 </nav>
 
         </div>
