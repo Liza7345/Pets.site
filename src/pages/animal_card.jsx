@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import AnimalCard from "../components/AnimalCard";
+import AnimalCard from "../components/card";
 
 const AnimalCardPage = () => {
     // Получаем параметр animal из URL
