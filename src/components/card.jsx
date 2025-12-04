@@ -13,7 +13,7 @@ const AnimalCard = ({ animal }) => {
             age: "Примерно 2 года",
             size: "Средний",
             location: "Парк 'Сокольники'",
-            image: "image/Кролик.jpg"
+            image: "/image/Кролик.jpg"
         },
         hedgehog: {
             name: "Ёжик",
@@ -24,7 +24,7 @@ const AnimalCard = ({ animal }) => {
             age: "Примерно 1 год",
             size: "Маленький",
             location: "Район Отрадное",
-            image: "image/Ёжик.jpg"
+            image: "/image/Ёжик.jpg"
         },
         snake: {
             name: "Зоя",
@@ -35,7 +35,7 @@ const AnimalCard = ({ animal }) => {
             age: "Примерно 3 года",
             size: "Средний",
             location: "Битцевский парк",
-            image: "image/Змея.jpg"
+            image: "/image/Змея.jpg"
         },
         raccoon: {
             name: "Рокки",
@@ -46,7 +46,7 @@ const AnimalCard = ({ animal }) => {
             age: "Примерно 1.5 года",
             size: "Средний",
             location: "Район Кунцево",
-            image: "image/Енот.jpg"
+            image: "/image/Енот.jpg"
         }
     };
 
