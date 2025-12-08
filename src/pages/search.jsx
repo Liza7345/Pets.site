@@ -3,12 +3,16 @@ import { Link } from "react-router-dom";
 
 const Search = () => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [animals, setAnimals] = useState([]);
-    const [filteredAnimals, setFilteredAnimals] = useState([]);
+    const [allAnimals, setAllAnimals] = useState([]); // Все животные с сервера
+    const [displayedAnimals, setDisplayedAnimals] = useState([]); // Показанные животные
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const itemsPerPage = 6; // Сколько животных показывать за раз
     
     // Используем useRef для хранения таймера debounce
     const debounceTimer = useRef(null);
@@ -34,11 +38,15 @@ const Search = () => {
     };
 
     // Основная функция загрузки животных
-    const fetchAnimals = useCallback(async (searchQuery = "", isSuggestion = false) => {
+    const fetchAnimals = useCallback(async (searchQuery = "", isSuggestion = false, reset = false) => {
         try {
-            if (!isSuggestion) {
+            if (!isSuggestion && !reset) {
                 setLoading(true);
             }
+            if (reset) {
+                setPage(1);
+            }
+            
             setError(null);
             
             // Формируем URL для запроса
@@ -58,8 +66,8 @@ const Search = () => {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },
-                mode: 'cors', // Указываем явно режим CORS
-                credentials: 'omit', // Не отправляем куки
+                mode: 'cors',
+                credentials: 'omit',
             });
 
             console.log("Статус ответа:", response.status);
@@ -90,9 +98,19 @@ const Search = () => {
                 // Для подсказок возвращаем только первые 5 результатов
                 return animalsData.slice(0, 5);
             } else {
-                // Для основного результата устанавливаем все данные
-                setAnimals(animalsData);
-                setFilteredAnimals(animalsData);
+                // Сохраняем все загруженные животные
+                setAllAnimals(animalsData);
+                
+                // Показываем только первую страницу
+                if (reset) {
+                    setPage(1);
+                }
+                const startIndex = 0;
+                const endIndex = itemsPerPage;
+                setDisplayedAnimals(animalsData.slice(startIndex, endIndex));
+                
+                // Проверяем, есть ли еще данные для загрузки
+                setHasMore(animalsData.length > endIndex);
             }
             
         } catch (err) {
@@ -105,23 +123,48 @@ const Search = () => {
             
             setError(`Ошибка при загрузке данных: ${err.message}`);
             
-            // Устанавливаем пустые массивы, чтобы убрать моковые данные
-            setAnimals([]);
-            setFilteredAnimals([]);
+            // Устанавливаем пустые массивы
+            setAllAnimals([]);
+            setDisplayedAnimals([]);
+            setHasMore(false);
             
         } finally {
-            if (!isSuggestion) {
+            if (!isSuggestion && !reset) {
                 setLoading(false);
             }
         }
         
         return [];
-    }, []);
+    }, [itemsPerPage]);
 
     // Загрузка всех животных при монтировании компонента
     useEffect(() => {
-        fetchAnimals("");
+        fetchAnimals("", false, true);
     }, [fetchAnimals]);
+
+    // Функция для загрузки дополнительных животных
+    const loadMoreAnimals = () => {
+        if (loadingMore || !hasMore) return;
+        
+        setLoadingMore(true);
+        
+        // Вычисляем индексы для следующей страницы
+        const nextPage = page + 1;
+        const startIndex = page * itemsPerPage;
+        const endIndex = nextPage * itemsPerPage;
+        
+        // Берем следующую порцию животных из уже загруженных данных
+        const moreAnimals = allAnimals.slice(startIndex, endIndex);
+        
+        // Добавляем к уже отображенным
+        setDisplayedAnimals(prev => [...prev, ...moreAnimals]);
+        setPage(nextPage);
+        
+        // Проверяем, остались ли еще животные
+        setHasMore(allAnimals.length > endIndex);
+        
+        setLoadingMore(false);
+    };
 
     // Функция для получения подсказок с debounce
     const fetchSuggestions = useCallback(async (query) => {
@@ -146,7 +189,7 @@ const Search = () => {
         
         debounceTimer.current = setTimeout(() => {
             fetchSuggestions(query);
-        }, 1000); // Задержка 1000ms как указано в задании
+        }, 1000);
     }, [fetchSuggestions]);
 
     // Обработчик изменения поля поиска
@@ -157,14 +200,19 @@ const Search = () => {
         if (value.trim() === "") {
             setSuggestions([]);
             setShowSuggestions(false);
-            setFilteredAnimals(animals); // Показываем всех животных при пустом поиске
+            // Если строка поиска пустая, показываем все животные (первую страницу)
+            if (allAnimals.length > 0) {
+                setDisplayedAnimals(allAnimals.slice(0, itemsPerPage));
+                setHasMore(allAnimals.length > itemsPerPage);
+            }
         } else {
             // Сначала делаем локальную фильтрацию
-            const filtered = animals.filter(animal => 
+            const filtered = allAnimals.filter(animal => 
                 animal.kind?.toLowerCase().includes(value.toLowerCase()) ||
                 animal.description?.toLowerCase().includes(value.toLowerCase())
             );
-            setFilteredAnimals(filtered);
+            setDisplayedAnimals(filtered.slice(0, itemsPerPage));
+            setHasMore(filtered.length > itemsPerPage);
             
             // Для подсказок используем debounce
             if (value.length >= 3) {
@@ -183,17 +231,18 @@ const Search = () => {
         setShowSuggestions(false);
         
         // Фильтруем локально по выбранной подсказке
-        const filtered = animals.filter(animal => 
+        const filtered = allAnimals.filter(animal => 
             animal.kind?.toLowerCase().includes(suggestion.kind.toLowerCase())
         );
-        setFilteredAnimals(filtered);
+        setDisplayedAnimals(filtered.slice(0, itemsPerPage));
+        setHasMore(filtered.length > itemsPerPage);
     };
 
     // Обработчик кнопки поиска
     const handleSearchClick = () => {
         if (searchTerm.trim().length >= 3) {
             // Выполняем поиск на сервере
-            fetchAnimals(searchTerm);
+            fetchAnimals(searchTerm, false, true);
         }
         setShowSuggestions(false);
     };
@@ -210,8 +259,8 @@ const Search = () => {
         setSearchTerm("");
         setSuggestions([]);
         setShowSuggestions(false);
-        // Показываем всех животных
-        fetchAnimals("");
+        // Показываем всех животных с первой страницы
+        fetchAnimals("", false, true);
     };
 
     return (
@@ -323,7 +372,7 @@ const Search = () => {
                                     <div>
                                         <button 
                                             className="btn btn-sm btn-outline-warning"
-                                            onClick={() => fetchAnimals("")}
+                                            onClick={() => fetchAnimals("", false, true)}
                                         >
                                             Повторить
                                         </button>
@@ -346,18 +395,18 @@ const Search = () => {
                     {/* Результаты поиска */}
                     {!loading && (
                         <>
-                            {searchTerm && filteredAnimals.length > 0 && (
+                            {searchTerm && displayedAnimals.length > 0 && (
                                 <div className="mb-4">
                                     <h5>
                                         <i className="bi bi-search me-2"></i>
                                         Результаты поиска для "{searchTerm}" 
-                                        <span className="badge bg-primary ms-2">{filteredAnimals.length}</span>
+                                        <span className="badge bg-primary ms-2">{displayedAnimals.length}</span>
                                     </h5>
                                 </div>
                             )}
                             
                             <div className="row">
-                                {filteredAnimals.length === 0 && !loading && !error ? (
+                                {displayedAnimals.length === 0 && !loading && !error ? (
                                     <div className="col-12">
                                         <div className="alert alert-info text-center">
                                             <i className="bi bi-info-circle me-2"></i>
@@ -368,7 +417,7 @@ const Search = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    filteredAnimals.map((animal) => (
+                                    displayedAnimals.map((animal) => (
                                         <div className="col-lg-4 col-md-6 mb-4" key={`animal-${animal.id}`}>
                                             <div 
                                                 className="card animal-card h-100 shadow-sm" 
@@ -449,33 +498,43 @@ const Search = () => {
                                     ))
                                 )}
                             </div>
-                        </>
-                    )}
 
-                    {/* Статистика */}
-                    {!loading && filteredAnimals.length > 0 && (
-                        <div className="mt-5 pt-4 border-top">
-                            <div className="row">
-                                <div className="col-md-8 mx-auto">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <div className="text-muted">
-                                            <i className="bi bi-info-circle me-1"></i>
-                                            Найдено {filteredAnimals.length} животных
-                                            {searchTerm && " по вашему запросу"}
-                                        </div>
-                                        <div>
-                                            <button 
-                                                className="btn btn-outline-info btn-sm"
-                                                onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
-                                            >
-                                                <i className="bi bi-arrow-up me-1"></i>
-                                                Наверх
-                                            </button>
-                                        </div>
-                                    </div>
+                            {/* Кнопка "Загрузить еще" */}
+                            {hasMore && displayedAnimals.length > 0 && (
+                                <div className="text-center mt-4">
+                                    <button 
+                                        className="btn btn-outline-primary btn-lg px-5"
+                                        onClick={loadMoreAnimals}
+                                        disabled={loadingMore}
+                                    >
+                                        {loadingMore ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Загрузка...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-arrow-down-circle me-2"></i>
+                                                Загрузить еще животных
+                                            </>
+                                        )}
+                                    </button>
+                                    <p className="text-muted mt-2 small">
+                                        Показано {displayedAnimals.length} из {allAnimals.length} животных
+                                    </p>
                                 </div>
-                            </div>
-                        </div>
+                            )}
+
+                            {/* Сообщение, если все загружено */}
+                            {!hasMore && displayedAnimals.length > 0 && (
+                                <div className="text-center mt-4 pt-3 border-top">
+                                    <p className="text-success">
+                                        <i className="bi bi-check-circle-fill me-2"></i>
+                                        Все животные загружены ({allAnimals.length} шт.)
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>
