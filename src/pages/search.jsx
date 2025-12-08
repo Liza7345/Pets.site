@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 
 const Search = () => {
@@ -9,35 +9,11 @@ const Search = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [useProxy, setUseProxy] = useState(false);
+    
+    // Используем useRef для хранения таймера debounce
+    const debounceTimer = useRef(null);
 
-    // Функция для получения URL с возможным прокси
-    const getApiUrl = (endpoint, query = "") => {
-        const baseUrl = "https://pets.xn--80ahdri7a.site/api";
-        let url = `${baseUrl}/${endpoint}`;
-        
-        if (query) {
-            url += `?q=${encodeURIComponent(query)}`;
-        }
-        
-        // Используем CORS proxy если обычный запрос не работает
-        if (useProxy) {
-            return `https://cors-anywhere.herokuapp.com/${url}`;
-        }
-        
-        return url;
-    };
-
-    // Функция debounce для задержки запросов
-    const debounce = (func, delay) => {
-        let timer;
-        return function (...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => func.apply(this, args), delay);
-        };
-    };
-
-    // Функция для получения полного URL изображения
+    // Функция для получения URL изображения
     const getImageUrl = (photoPath) => {
         if (!photoPath) return "https://via.placeholder.com/300x200?text=Нет+изображения";
         if (photoPath.startsWith("http")) return photoPath;
@@ -57,58 +33,7 @@ const Search = () => {
         };
     };
 
-    // Тестовые данные
-    const getMockData = () => {
-        return [
-            {
-                id: 1,
-                kind: "Кошка",
-                description: "Кошка рыжая",
-                photos: "/storage/images/fXk6cXXxtggt6BDMa4y48WPheXTjwX5MengoQ5s3.png",
-                mark: "vc-001-spb",
-                district: "Василеостровский",
-                date: "2023-03-05"
-            },
-            {
-                id: 3,
-                kind: "Собака",
-                description: "Собака большая, грустная",
-                photos: "/storage/images/uad6sYByxqWWPbxRoq1n2zNcIV7lsaZZVnv2FatL.png",
-                mark: "vd-002-spb",
-                district: "Курортный",
-                date: "2023-03-05"
-            },
-            {
-                id: 4,
-                kind: "Зебра",
-                description: "Зебра полосатая, высокая",
-                photos: "/storage/images/symr3O4IscuApnUGf3Ckwv8o4iQeoMypKW66Afol.png",
-                mark: "vz-003-spb",
-                district: "Центральный",
-                date: "2023-03-06"
-            },
-            {
-                id: 5,
-                kind: "Крокодил",
-                description: "Крокодил зеленый, любит людей",
-                photos: "/storage/images/A1d6l2dwPHHVk8hQmbONGUOa8XCNXlCQLyCrqq9U.png",
-                mark: "vk-004-spb",
-                district: "Приморский",
-                date: "2023-03-07"
-            },
-            {
-                id: 6,
-                kind: "Кенгуру",
-                description: "Кенгуру из Бразилии, любит прыгать, ласковая",
-                photos: "/storage/images/06vZ5JD5SiY9scNCLx6NRku8f7t85CvBbSmbGObu.png",
-                mark: "vk-005-spb",
-                district: "Невский",
-                date: "2023-03-08"
-            }
-        ];
-    };
-
-    // Загрузка животных
+    // Основная функция загрузки животных
     const fetchAnimals = useCallback(async (searchQuery = "", isSuggestion = false) => {
         try {
             if (!isSuggestion) {
@@ -116,94 +41,73 @@ const Search = () => {
             }
             setError(null);
             
-            const useProxyForRequest = useProxy || searchQuery.length >= 3;
-            const url = getApiUrl("search", searchQuery);
+            // Формируем URL для запроса
+            let url = "https://pets.xn--80ahdri7a.site/api/search";
+            
+            // Если есть поисковый запрос, добавляем его как query параметр
+            if (searchQuery && searchQuery.trim().length >= 3) {
+                url += `?q=${encodeURIComponent(searchQuery.trim())}`;
+            }
             
             console.log("Запрос к:", url);
             
-            const headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            };
-            
-            // Добавляем Origin только если не используем прокси
-            if (!useProxyForRequest) {
-                headers["Origin"] = window.location.origin;
-            }
-            
+            // Выполняем запрос без прокси
             const response = await fetch(url, {
                 method: "GET",
-                headers: headers,
-                mode: useProxyForRequest ? 'cors' : 'no-cors',
-                credentials: 'omit',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                mode: 'cors', // Указываем явно режим CORS
+                credentials: 'omit', // Не отправляем куки
             });
 
-            console.log("Статус ответа:", response.status, "OK:", response.ok);
+            console.log("Статус ответа:", response.status);
 
-            if (response.ok) {
-                try {
-                    const data = await response.json();
-                    console.log("Данные получены:", data);
-                    
-                    let ordersData = [];
-                    if (Array.isArray(data)) {
-                        ordersData = data;
-                    } else if (data.data && data.data.orders && Array.isArray(data.data.orders)) {
-                        ordersData = data.data.orders;
-                    } else if (data.orders && Array.isArray(data.orders)) {
-                        ordersData = data.orders;
-                    } else if (data.data && Array.isArray(data.data)) {
-                        ordersData = data.data;
-                    } else {
-                        console.warn("Неизвестный формат ответа:", data);
-                        throw new Error("Неверный формат данных");
-                    }
-                    
-                    const animalsData = ordersData.map(transformOrderToAnimal);
-                    
-                    if (isSuggestion) {
-                        return animalsData.slice(0, 5);
-                    } else {
-                        setAnimals(animalsData);
-                        setFilteredAnimals(animalsData);
-                    }
-                    
-                } catch (parseError) {
-                    console.error("Ошибка парсинга JSON:", parseError);
-                    throw new Error("Ошибка обработки данных");
-                }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Данные получены:", data);
+            
+            // Извлекаем данные из структуры ответа
+            let ordersData = [];
+            if (data.data && data.data.orders && Array.isArray(data.data.orders)) {
+                ordersData = data.data.orders;
+            } else if (Array.isArray(data)) {
+                ordersData = data;
+            } else if (data.orders && Array.isArray(data.orders)) {
+                ordersData = data.orders;
             } else {
-                throw new Error(`HTTP ${response.status}`);
+                console.warn("Неизвестный формат ответа:", data);
+                throw new Error("Неверный формат данных от сервера");
+            }
+            
+            const animalsData = ordersData.map(transformOrderToAnimal);
+            
+            if (isSuggestion) {
+                // Для подсказок возвращаем только первые 5 результатов
+                return animalsData.slice(0, 5);
+            } else {
+                // Для основного результата устанавливаем все данные
+                setAnimals(animalsData);
+                setFilteredAnimals(animalsData);
             }
             
         } catch (err) {
-            console.error("Ошибка запроса:", err);
+            console.error("Ошибка при загрузке данных:", err);
             
-            // Для подсказок возвращаем пустой массив
             if (isSuggestion) {
+                // Для подсказок возвращаем пустой массив
                 return [];
             }
             
-            // Для основного запроса используем тестовые данные
-            if (!searchQuery || searchQuery.length < 3) {
-                const mockData = getMockData();
-                const animalsData = mockData.map(transformOrderToAnimal);
-                setAnimals(animalsData);
-                setFilteredAnimals(animalsData);
-            } else {
-                setError(`Поиск не доступен. Используйте локальную фильтрацию.`);
-                // Фильтруем существующие данные
-                const filtered = animals.filter(animal => 
-                    animal.kind?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    animal.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-                setFilteredAnimals(filtered);
-            }
+            setError(`Ошибка при загрузке данных: ${err.message}`);
             
-            // Пробуем включить прокси для следующих запросов
-            if (!useProxy) {
-                setUseProxy(true);
-            }
+            // Устанавливаем пустые массивы, чтобы убрать моковые данные
+            setAnimals([]);
+            setFilteredAnimals([]);
             
         } finally {
             if (!isSuggestion) {
@@ -212,28 +116,38 @@ const Search = () => {
         }
         
         return [];
-    }, [animals, useProxy]);
-
-    // Загрузка при монтировании
-    useEffect(() => {
-        fetchAnimals("");
     }, []);
 
+    // Загрузка всех животных при монтировании компонента
+    useEffect(() => {
+        fetchAnimals("");
+    }, [fetchAnimals]);
+
     // Функция для получения подсказок с debounce
-    const fetchSuggestionsWithDebounce = useCallback(
-        debounce(async (query) => {
-            if (query.length >= 3) {
-                try {
-                    const suggestionsData = await fetchAnimals(query, true);
-                    setSuggestions(suggestionsData);
-                } catch (err) {
-                    console.error("Ошибка загрузки подсказок:", err);
-                    setSuggestions([]);
-                }
+    const fetchSuggestions = useCallback(async (query) => {
+        if (query.trim().length >= 3) {
+            try {
+                const suggestionsData = await fetchAnimals(query, true);
+                setSuggestions(suggestionsData);
+            } catch (err) {
+                console.error("Ошибка загрузки подсказок:", err);
+                setSuggestions([]);
             }
-        }, 1000),
-        [fetchAnimals]
-    );
+        } else {
+            setSuggestions([]);
+        }
+    }, [fetchAnimals]);
+
+    // Debounce функция для обработки ввода
+    const debouncedSearch = useCallback((query) => {
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+        }
+        
+        debounceTimer.current = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 1000); // Задержка 1000ms как указано в задании
+    }, [fetchSuggestions]);
 
     // Обработчик изменения поля поиска
     const handleSearchChange = (e) => {
@@ -243,18 +157,19 @@ const Search = () => {
         if (value.trim() === "") {
             setSuggestions([]);
             setShowSuggestions(false);
-            setFilteredAnimals(animals);
+            setFilteredAnimals(animals); // Показываем всех животных при пустом поиске
         } else {
-            // Локальная фильтрация
+            // Сначала делаем локальную фильтрацию
             const filtered = animals.filter(animal => 
                 animal.kind?.toLowerCase().includes(value.toLowerCase()) ||
                 animal.description?.toLowerCase().includes(value.toLowerCase())
             );
             setFilteredAnimals(filtered);
             
+            // Для подсказок используем debounce
             if (value.length >= 3) {
-                fetchSuggestionsWithDebounce(value);
                 setShowSuggestions(true);
+                debouncedSearch(value);
             } else {
                 setSuggestions([]);
                 setShowSuggestions(false);
@@ -267,6 +182,7 @@ const Search = () => {
         setSearchTerm(suggestion.kind || "");
         setShowSuggestions(false);
         
+        // Фильтруем локально по выбранной подсказке
         const filtered = animals.filter(animal => 
             animal.kind?.toLowerCase().includes(suggestion.kind.toLowerCase())
         );
@@ -275,7 +191,8 @@ const Search = () => {
 
     // Обработчик кнопки поиска
     const handleSearchClick = () => {
-        if (searchTerm.length >= 3) {
+        if (searchTerm.trim().length >= 3) {
+            // Выполняем поиск на сервере
             fetchAnimals(searchTerm);
         }
         setShowSuggestions(false);
@@ -293,16 +210,8 @@ const Search = () => {
         setSearchTerm("");
         setSuggestions([]);
         setShowSuggestions(false);
-        setFilteredAnimals(animals);
-    };
-
-    // Загрузка тестовых данных
-    const handleLoadMockData = () => {
-        const mockData = getMockData();
-        const animalsData = mockData.map(transformOrderToAnimal);
-        setAnimals(animalsData);
-        setFilteredAnimals(animalsData);
-        setError(null);
+        // Показываем всех животных
+        fetchAnimals("");
     };
 
     return (
@@ -318,7 +227,7 @@ const Search = () => {
                                 <input 
                                     type="text" 
                                     className="form-control" 
-                                    placeholder="Введите тип животного или описание (минимум 3 символа)" 
+                                    placeholder="Введите описание животного (минимум 3 символа)" 
                                     value={searchTerm}
                                     onChange={handleSearchChange}
                                     onKeyPress={handleKeyPress}
@@ -354,7 +263,7 @@ const Search = () => {
                                         <div className="list-group shadow">
                                             {suggestions.map((suggestion, index) => (
                                                 <button
-                                                    key={`sug-${index}`}
+                                                    key={`sug-${suggestion.id}-${index}`}
                                                     type="button"
                                                     className="list-group-item list-group-item-action text-start"
                                                     onClick={() => handleSuggestionClick(suggestion)}
@@ -402,7 +311,7 @@ const Search = () => {
                         </div>
                     </div>
 
-                    {/* Сообщение об ошибке и кнопка загрузки тестовых данных */}
+                    {/* Сообщение об ошибке */}
                     <div className="row mb-4">
                         <div className="col-md-8 mx-auto">
                             {error && (
@@ -413,16 +322,10 @@ const Search = () => {
                                     </div>
                                     <div>
                                         <button 
-                                            className="btn btn-sm btn-outline-warning me-2"
+                                            className="btn btn-sm btn-outline-warning"
                                             onClick={() => fetchAnimals("")}
                                         >
                                             Повторить
-                                        </button>
-                                        <button 
-                                            className="btn btn-sm btn-primary"
-                                            onClick={handleLoadMockData}
-                                        >
-                                            Использовать тестовые данные
                                         </button>
                                     </div>
                                 </div>
@@ -431,7 +334,7 @@ const Search = () => {
                     </div>
 
                     {/* Индикатор загрузки */}
-                    {loading && !error && (
+                    {loading && (
                         <div className="text-center py-5">
                             <div className="spinner-border text-primary" style={{width: '3rem', height: '3rem'}}>
                                 <span className="visually-hidden">Загрузка...</span>
@@ -454,13 +357,13 @@ const Search = () => {
                             )}
                             
                             <div className="row">
-                                {filteredAnimals.length === 0 && !loading ? (
+                                {filteredAnimals.length === 0 && !loading && !error ? (
                                     <div className="col-12">
                                         <div className="alert alert-info text-center">
                                             <i className="bi bi-info-circle me-2"></i>
                                             {searchTerm 
                                                 ? `Животные по запросу "${searchTerm}" не найдены`
-                                                : "Введите запрос для поиска животных"
+                                                : "Начните вводить описание животного для поиска"
                                             }
                                         </div>
                                     </div>
@@ -557,7 +460,7 @@ const Search = () => {
                                     <div className="d-flex justify-content-between align-items-center">
                                         <div className="text-muted">
                                             <i className="bi bi-info-circle me-1"></i>
-                                            Показано {filteredAnimals.length} животных
+                                            Найдено {filteredAnimals.length} животных
                                             {searchTerm && " по вашему запросу"}
                                         </div>
                                         <div>
