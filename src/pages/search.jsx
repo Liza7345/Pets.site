@@ -3,28 +3,25 @@ import { Link } from "react-router-dom";
 
 const Search = () => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [allAnimals, setAllAnimals] = useState([]); // Все животные с сервера
-    const [displayedAnimals, setDisplayedAnimals] = useState([]); // Показанные животные
-    const [suggestions, setSuggestions] = useState([]);
+    const [allAnimals, setAllAnimals] = useState([]);
+    const [displayedAnimals, setDisplayedAnimals] = useState([]); 
+    const [setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [ setShowSuggestions] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const itemsPerPage = 6; // Сколько животных показывать за раз
-    
-    // Используем useRef для хранения таймера debounce
+    const itemsPerPage = 6; 
+  
     const debounceTimer = useRef(null);
 
-    // Функция для получения URL изображения
     const getImageUrl = (photoPath) => {
         if (!photoPath) return "https://via.placeholder.com/300x200?text=Нет+изображения";
         if (photoPath.startsWith("http")) return photoPath;
         return `https://pets.xn--80ahdri7a.site${photoPath}`;
     };
 
-    // Преобразование данных из формата orders в pets
     const transformOrderToAnimal = (order) => {
         return {
             id: order.id,
@@ -37,7 +34,6 @@ const Search = () => {
         };
     };
 
-    // Основная функция загрузки животных
     const fetchAnimals = useCallback(async (searchQuery = "", isSuggestion = false, reset = false) => {
         try {
             if (!isSuggestion && !reset) {
@@ -49,17 +45,14 @@ const Search = () => {
             
             setError(null);
             
-            // Формируем URL для запроса
             let url = "https://pets.xn--80ahdri7a.site/api/search";
             
-            // Если есть поисковый запрос, добавляем его как query параметр
             if (searchQuery && searchQuery.trim().length >= 3) {
                 url += `?q=${encodeURIComponent(searchQuery.trim())}`;
             }
             
             console.log("Запрос к:", url);
             
-            // Выполняем запрос без прокси
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
@@ -79,7 +72,6 @@ const Search = () => {
             const data = await response.json();
             console.log("Данные получены:", data);
             
-            // Извлекаем данные из структуры ответа
             let ordersData = [];
             if (data.data && data.data.orders && Array.isArray(data.data.orders)) {
                 ordersData = data.data.orders;
@@ -95,21 +87,16 @@ const Search = () => {
             const animalsData = ordersData.map(transformOrderToAnimal);
             
             if (isSuggestion) {
-                // Для подсказок возвращаем только первые 5 результатов
                 return animalsData.slice(0, 5);
             } else {
-                // Сохраняем все загруженные животные
                 setAllAnimals(animalsData);
-                
-                // Показываем только первую страницу
+
                 if (reset) {
                     setPage(1);
                 }
                 const startIndex = 0;
                 const endIndex = itemsPerPage;
                 setDisplayedAnimals(animalsData.slice(startIndex, endIndex));
-                
-                // Проверяем, есть ли еще данные для загрузки
                 setHasMore(animalsData.length > endIndex);
             }
             
@@ -117,13 +104,11 @@ const Search = () => {
             console.error("Ошибка при загрузке данных:", err);
             
             if (isSuggestion) {
-                // Для подсказок возвращаем пустой массив
                 return [];
             }
             
             setError(`Ошибка при загрузке данных: ${err.message}`);
             
-            // Устанавливаем пустые массивы
             setAllAnimals([]);
             setDisplayedAnimals([]);
             setHasMore(false);
@@ -137,36 +122,29 @@ const Search = () => {
         return [];
     }, [itemsPerPage]);
 
-    // Загрузка всех животных при монтировании компонента
     useEffect(() => {
         fetchAnimals("", false, true);
     }, [fetchAnimals]);
 
-    // Функция для загрузки дополнительных животных
     const loadMoreAnimals = () => {
         if (loadingMore || !hasMore) return;
         
         setLoadingMore(true);
         
-        // Вычисляем индексы для следующей страницы
         const nextPage = page + 1;
         const startIndex = page * itemsPerPage;
         const endIndex = nextPage * itemsPerPage;
         
-        // Берем следующую порцию животных из уже загруженных данных
         const moreAnimals = allAnimals.slice(startIndex, endIndex);
         
-        // Добавляем к уже отображенным
         setDisplayedAnimals(prev => [...prev, ...moreAnimals]);
         setPage(nextPage);
         
-        // Проверяем, остались ли еще животные
         setHasMore(allAnimals.length > endIndex);
         
         setLoadingMore(false);
     };
 
-    // Функция для получения подсказок с debounce
     const fetchSuggestions = useCallback(async (query) => {
         if (query.trim().length >= 3) {
             try {
@@ -181,7 +159,6 @@ const Search = () => {
         }
     }, [fetchAnimals]);
 
-    // Debounce функция для обработки ввода
     const debouncedSearch = useCallback((query) => {
         if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
@@ -192,7 +169,6 @@ const Search = () => {
         }, 1000);
     }, [fetchSuggestions]);
 
-    // Обработчик изменения поля поиска
     const handleSearchChange = (e) => {
         const value = e.target.value;
         setSearchTerm(value);
@@ -200,13 +176,13 @@ const Search = () => {
         if (value.trim() === "") {
             setSuggestions([]);
             setShowSuggestions(false);
-            // Если строка поиска пустая, показываем все животные (первую страницу)
+
             if (allAnimals.length > 0) {
                 setDisplayedAnimals(allAnimals.slice(0, itemsPerPage));
                 setHasMore(allAnimals.length > itemsPerPage);
             }
         } else {
-            // Сначала делаем локальную фильтрацию
+
             const filtered = allAnimals.filter(animal => 
                 animal.kind?.toLowerCase().includes(value.toLowerCase()) ||
                 animal.description?.toLowerCase().includes(value.toLowerCase())
@@ -214,7 +190,7 @@ const Search = () => {
             setDisplayedAnimals(filtered.slice(0, itemsPerPage));
             setHasMore(filtered.length > itemsPerPage);
             
-            // Для подсказок используем debounce
+
             if (value.length >= 3) {
                 setShowSuggestions(true);
                 debouncedSearch(value);
@@ -225,12 +201,10 @@ const Search = () => {
         }
     };
 
-    // Обработчик выбора подсказки
     const handleSuggestionClick = (suggestion) => {
         setSearchTerm(suggestion.kind || "");
         setShowSuggestions(false);
-        
-        // Фильтруем локально по выбранной подсказке
+
         const filtered = allAnimals.filter(animal => 
             animal.kind?.toLowerCase().includes(suggestion.kind.toLowerCase())
         );
@@ -238,10 +212,8 @@ const Search = () => {
         setHasMore(filtered.length > itemsPerPage);
     };
 
-    // Обработчик кнопки поиска
     const handleSearchClick = () => {
         if (searchTerm.trim().length >= 3) {
-            // Выполняем поиск на сервере
             fetchAnimals(searchTerm, false, true);
         }
         setShowSuggestions(false);
@@ -259,7 +231,7 @@ const Search = () => {
         setSearchTerm("");
         setSuggestions([]);
         setShowSuggestions(false);
-        // Показываем всех животных с первой страницы
+
         fetchAnimals("", false, true);
     };
 
@@ -269,14 +241,13 @@ const Search = () => {
                 <div className="container py-5">
                     <h2 className="text-center mb-4">Поиск животных</h2>
                     
-                    {/* Поисковая строка */}
                     <div className="row mb-4">
                         <div className="col-md-8 mx-auto">
                             <div className="input-group position-relative">
                                 <input 
                                     type="text" 
                                     className="form-control" 
-                                    placeholder="Введите описание животного (минимум 3 символа)" 
+                                    placeholder="Введите описание животного" 
                                     value={searchTerm}
                                     onChange={handleSearchChange}
                                     onKeyPress={handleKeyPress}
@@ -304,41 +275,6 @@ const Search = () => {
                                     >
                                         Сбросить
                                     </button>
-                                )}
-                                
-                                {/* Подсказки */}
-                                {showSuggestions && suggestions.length > 0 && (
-                                    <div className="position-absolute top-100 start-0 end-0 z-3 mt-1">
-                                        <div className="list-group shadow">
-                                            {suggestions.map((suggestion, index) => (
-                                                <button
-                                                    key={`sug-${suggestion.id}-${index}`}
-                                                    type="button"
-                                                    className="list-group-item list-group-item-action text-start"
-                                                    onClick={() => handleSuggestionClick(suggestion)}
-                                                >
-                                                    <div className="d-flex align-items-center">
-                                                        <div className="me-3" style={{width: '40px', height: '40px'}}>
-                                                            <img 
-                                                                src={getImageUrl(suggestion.image)} 
-                                                                alt={suggestion.kind}
-                                                                className="img-fluid rounded"
-                                                                style={{width: '100%', height: '100%', objectFit: 'cover'}}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <strong>{suggestion.kind}</strong>
-                                                            {suggestion.description && (
-                                                                <span className="text-muted d-block small">
-                                                                    {suggestion.description.substring(0, 50)}...
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
                                 )}
                             </div>
                             
