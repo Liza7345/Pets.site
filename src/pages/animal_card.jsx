@@ -36,7 +36,7 @@ const AnimalCardPage = () => {
         );
     }
     
-    // Иначе используем старый компонент
+
     return (
         <div>
             <main style={{'minHeight':'70vh'}}>
