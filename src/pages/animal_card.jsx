@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, useLocation, Link } from "react-router-dom"; // Добавлен Link
+import { useParams, useLocation, Link } from "react-router-dom";
 import AnimalCard from "../components/card";
 
 const AnimalCardPage = () => {
@@ -35,12 +35,60 @@ const AnimalCardPage = () => {
             </div>
         );
     }
-    
 
     return (
         <div>
             <main style={{'minHeight':'70vh'}}>
+                {/* Основная карточка животного */}
                 <AnimalCard animal={animalType || 'rabbit'} />
+                
+                {/* Дополнительная информация, если есть */}
+                <div className="container">
+                    <div className="row mt-3">
+                        <div className="col-12">
+                            <div className="mt-4 pt-3 border-top">
+                                <small className="text-muted">
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    Если это ваше животное или у вас есть дополнительная информация, 
+                                    свяжитесь с нами для обновления данных.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Дополнительная секция с контактами */}
+                <div className="container">
+                    <div className="row mt-5">
+                        <div className="col-12">
+                            <div className="card">
+                                <div className="card-header bg-light">
+                                    <h5 className="mb-0">Контактная информация</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <h6>Телефон горячей линии:</h6>
+                                            <p className="fs-5">
+                                                <i className="bi bi-telephone-fill text-primary me-2"></i>
+                                                +7 (999) 123-45-67
+                                            </p>
+                                            <small className="text-muted">Работаем круглосуточно</small>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <h6>Электронная почта:</h6>
+                                            <p className="fs-5">
+                                                <i className="bi bi-envelope-fill text-success me-2"></i>
+                                                help@webpets.ru
+                                            </p>
+                                            <small className="text-muted">Отвечаем в течение 24 часов</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
     );
