@@ -89,6 +89,7 @@ const AnimalCardPage = () => {
                         </div>
                     </div>
                 </div>
+                <br></br>
             </main>
         </div>
     );

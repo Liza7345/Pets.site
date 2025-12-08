@@ -5,11 +5,11 @@ const Search = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [allAnimals, setAllAnimals] = useState([]);
     const [displayedAnimals, setDisplayedAnimals] = useState([]); 
-    const [setSuggestions] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [ setShowSuggestions] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const itemsPerPage = 6; 
