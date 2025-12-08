@@ -23,7 +23,7 @@ function App() {
           <Route path={'/login'} element={<Login />} />
           <Route path={'/profile'} element={<Profile />} />
           <Route path={'/add-animal'} element={<AddAnimal />} />
-          <Route path={'/animal/:animalType'} element={<AnimalCardPage />} />
+          <Route path={'/animal/:id'} element={<AnimalCardPage />} />
         </Routes>
       <Footer/>
     </div>
