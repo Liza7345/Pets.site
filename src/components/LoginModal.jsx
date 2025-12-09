@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 
 const LoginModal = () => {
     const [user, setUser] = useState({});
-    const [token, setToken] = useState("");
+    const [error, setError] = useState(false);
+    const [success, setSuccess] = useState(false);
     const navigate = useNavigate();
 
     const auth = (e) => {
         e.preventDefault();
+        setError(false);
+        setSuccess(false);
         
         const form = document.getElementById('loginModalForm');
         
@@ -32,19 +35,28 @@ const LoginModal = () => {
         fetch("https://pets.xn--80ahdri7a.site/api/login", requestOptions)
             .then(response => response.json())
             .then(result => {
-                if ('data' in result) {
+                if (result.data && result.data.token) {
                     localStorage.setItem("auth_token", result.data.token);
-                    setToken(result.data.token);
+                    setSuccess(true);
                     
-                    const modalElement = document.getElementById('loginModal');
-                    const modal = window.bootstrap.Modal.getInstance(modalElement);
-                    modal.hide();
-                    
-                    navigate('/profile');
-                    window.location.reload();
+                    // Закрываем модалку через data-bs-dismiss
+                    setTimeout(() => {
+                        const closeButton = document.querySelector('#loginModal .btn-close[data-bs-dismiss="modal"]');
+                        if (closeButton) {
+                            closeButton.click();
+                        }
+                        
+                        navigate('/profile');
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    setError(true);
                 }
             })
-            .catch(error => console.error(error));
+            .catch(error => {
+                console.error(error);
+                setError(true);
+            });
     };
 
     return (
@@ -53,9 +65,36 @@ const LoginModal = () => {
                 <div className="modal-content">
                     <div className="modal-header">
                         <h5 className="modal-title">Вход</h5>
-                        <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+                        <button 
+                            type="button" 
+                            className="btn-close" 
+                            data-bs-dismiss="modal"
+                            aria-label="Close"
+                        ></button>
                     </div>
                     <div className="modal-body">
+                        {error && (
+                            <div className="alert alert-danger alert-dismissible fade show">
+                                Неправильный email или пароль
+                                <button 
+                                    type="button" 
+                                    className="btn-close" 
+                                    onClick={() => setError(false)}
+                                ></button>
+                            </div>
+                        )}
+                        
+                        {success && (
+                            <div className="alert alert-success alert-dismissible fade show">
+                                Успешный вход! Перенаправляем...
+                                <button 
+                                    type="button" 
+                                    className="btn-close" 
+                                    onClick={() => setSuccess(false)}
+                                ></button>
+                            </div>
+                        )}
+                        
                         <form 
                             className="needs-validation" 
                             onSubmit={auth} 
