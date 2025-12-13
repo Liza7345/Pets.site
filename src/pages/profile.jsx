@@ -11,7 +11,6 @@ const Profile = () => {
     const [loadingEdit, setLoadingEdit] = useState(false);
     const [editError, setEditError] = useState("");
     const [editSuccess, setEditSuccess] = useState("");
-    const [userId, setUserId] = useState(null); // Добавили отдельное состояние для ID
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -29,13 +28,10 @@ const Profile = () => {
         try {
             const response = await fetch("https://pets.xn--80ahdri7a.site/api/users", {
                 headers: {
-                    "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 }
             });
 
-            console.log("Profile response status:", response.status);
-            
             if (response.status === 401) {
                 localStorage.removeItem("auth_token");
                 navigate("/");
@@ -43,38 +39,28 @@ const Profile = () => {
             }
 
             const data = await response.json();
-            console.log("Profile API Response:", data);
             
-            // Проверяем структуру
-            let user = null;
             if (data && typeof data === 'object') {
                 if (data.id && data.name) {
-                    user = data;
+                    setUserData(data);
                 } else if (data.data?.user?.[0]) {
-                    user = data.data.user[0];
+                    setUserData(data.data.user[0]);
                 } else if (data.user?.[0]) {
-                    user = data.user[0];
+                    setUserData(data.user[0]);
                 } else if (data.data) {
-                    user = data.data;
+                    setUserData(data.data);
                 }
-            }
-            
-            if (user) {
-                setUserData(user);
-                // Извлекаем ID из объекта пользователя
-                setUserId(user.id || user.user_id || user.userId);
             }
         } catch (err) {
             console.error("Ошибка запроса:", err);
-            setEditError("Ошибка соединения с сервером");
         } finally {
             setLoading(false);
         }
     };
 
     const handleUpdatePhone = async () => {
-        if (!newPhone.trim() || !userId) {
-            setEditError("ID пользователя не найден или телефон пустой");
+        if (!newPhone.trim()) {
+            setEditError("Введите номер телефона");
             return;
         }
         
@@ -84,54 +70,72 @@ const Profile = () => {
         
         try {
             const token = localStorage.getItem("auth_token");
-            console.log("Updating phone for user ID:", userId);
-            console.log("Token exists:", !!token);
             
-            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/users/${userId}/phone`, {
+            // ВАЖНО: Попробуем разные варианты URL
+            const url = `https://pets.xn--80ahdri7a.site/api/users/phone`;
+            console.log("Отправка запроса на:", url);
+            
+            const response = await fetch(url, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    "Accept": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify({ phone: newPhone })
             });
             
-            console.log("Phone update response status:", response.status);
+            console.log("Статус ответа:", response.status);
+            console.log("Заголовки ответа:", response.headers);
             
             const responseText = await response.text();
-            console.log("Phone update response text:", responseText);
+            console.log("Полный ответ:", responseText.substring(0, 200)); // Первые 200 символов
+            
+            // Проверяем, не HTML ли это
+            if (responseText.trim().startsWith("<!DOCTYPE") || responseText.trim().startsWith("<html")) {
+                setEditError("Сервер вернул HTML вместо JSON. Возможно, неверный URL или ошибка сервера.");
+                return;
+            }
             
             let data = {};
             try {
                 data = responseText ? JSON.parse(responseText) : {};
             } catch (e) {
-                console.error("Error parsing JSON:", e);
+                console.error("Ошибка парсинга JSON:", e);
+                setEditError(`Неверный формат ответа: ${responseText.substring(0, 100)}`);
+                return;
             }
             
-            if (response.status === 200) {
+            if (response.ok) {
                 setEditSuccess("Телефон успешно обновлен");
                 setUserData(prev => ({ ...prev, phone: newPhone }));
                 setEditingPhone(false);
             } else if (response.status === 422) {
                 setEditError(data.error?.message || "Ошибка валидации телефона");
             } else if (response.status === 401) {
-                setEditError("Неавторизован. Пожалуйста, войдите снова.");
+                setEditError("Неавторизован");
                 localStorage.removeItem("auth_token");
                 navigate("/");
             } else {
-                setEditError(`Ошибка сервера: ${response.status}`);
+                setEditError(`Ошибка сервера: ${response.status} - ${data.message || 'Неизвестная ошибка'}`);
             }
         } catch (err) {
             console.error("Ошибка соединения:", err);
-            setEditError("Ошибка соединения с сервером. Проверьте интернет-соединение.");
+            setEditError(`Ошибка сети: ${err.message}`);
         } finally {
             setLoadingEdit(false);
         }
     };
 
     const handleUpdateEmail = async () => {
-        if (!newEmail.trim() || !userId) {
-            setEditError("ID пользователя не найден или email пустой");
+        if (!newEmail.trim()) {
+            setEditError("Введите email");
+            return;
+        }
+        
+        // Простая валидация email
+        if (!/\S+@\S+\.\S+/.test(newEmail)) {
+            setEditError("Введите корректный email");
             return;
         }
         
@@ -141,45 +145,57 @@ const Profile = () => {
         
         try {
             const token = localStorage.getItem("auth_token");
-            console.log("Updating email for user ID:", userId);
             
-            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/users/${userId}/email`, {
+            // ВАЖНО: Попробуем разные варианты URL
+            const url = `https://pets.xn--80ahdri7a.site/api/users/email`;
+            console.log("Отправка запроса на:", url);
+            
+            const response = await fetch(url, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    "Accept": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify({ email: newEmail })
             });
             
-            console.log("Email update response status:", response.status);
+            console.log("Статус ответа:", response.status);
             
             const responseText = await response.text();
-            console.log("Email update response text:", responseText);
+            console.log("Полный ответ:", responseText.substring(0, 200));
+            
+            // Проверяем, не HTML ли это
+            if (responseText.trim().startsWith("<!DOCTYPE") || responseText.trim().startsWith("<html")) {
+                setEditError("Сервер вернул HTML вместо JSON. Возможно, неверный URL или ошибка сервера.");
+                return;
+            }
             
             let data = {};
             try {
                 data = responseText ? JSON.parse(responseText) : {};
             } catch (e) {
-                console.error("Error parsing JSON:", e);
+                console.error("Ошибка парсинга JSON:", e);
+                setEditError(`Неверный формат ответа: ${responseText.substring(0, 100)}`);
+                return;
             }
             
-            if (response.status === 200) {
+            if (response.ok) {
                 setEditSuccess("Email успешно обновлен");
                 setUserData(prev => ({ ...prev, email: newEmail }));
                 setEditingEmail(false);
             } else if (response.status === 422) {
                 setEditError(data.error?.message || "Ошибка валидации email");
             } else if (response.status === 401) {
-                setEditError("Неавторизован. Пожалуйста, войдите снова.");
+                setEditError("Неавторизован");
                 localStorage.removeItem("auth_token");
                 navigate("/");
             } else {
-                setEditError(`Ошибка сервера: ${response.status}`);
+                setEditError(`Ошибка сервера: ${response.status} - ${data.message || 'Неизвестная ошибка'}`);
             }
         } catch (err) {
             console.error("Ошибка соединения:", err);
-            setEditError("Ошибка соединения с сервером. Проверьте интернет-соединение.");
+            setEditError(`Ошибка сети: ${err.message}`);
         } finally {
             setLoadingEdit(false);
         }
@@ -210,12 +226,6 @@ const Profile = () => {
                 </button>
             </div>
 
-            {/* Отладочная информация */}
-            <div className="alert alert-info mb-3">
-                <small>User ID: {userId || "Не найден"}</small>
-            </div>
-
-            {/* Сообщения об ошибках/успехе */}
             {editError && (
                 <div className="alert alert-danger alert-dismissible fade show mb-3">
                     {editError}
@@ -236,36 +246,33 @@ const Profile = () => {
                         <div className="col-md-8">
                             <h4>{userData.name}</h4>
                             
-                            {/* Редактирование телефона */}
                             <p className="d-flex align-items-center">
                                 <strong className="me-2">Телефон:</strong> 
                                 {editingPhone ? (
-                                    <div className="d-flex align-items-center flex-wrap">
+                                    <div className="d-flex align-items-center">
                                         <input 
                                             type="text" 
-                                            className="form-control form-control-sm me-2 mb-1"
-                                            style={{minWidth: '200px'}}
+                                            className="form-control form-control-sm me-2"
+                                            style={{width: '200px'}}
                                             value={newPhone}
                                             onChange={(e) => setNewPhone(e.target.value)}
                                             placeholder={userData.phone}
                                             disabled={loadingEdit}
                                         />
-                                        <div>
-                                            <button 
-                                                className="btn btn-sm btn-success me-1 mb-1" 
-                                                onClick={handleUpdatePhone}
-                                                disabled={loadingEdit}
-                                            >
-                                                {loadingEdit ? "Сохранение..." : "Сохранить"}
-                                            </button>
-                                            <button 
-                                                className="btn btn-sm btn-secondary mb-1" 
-                                                onClick={() => setEditingPhone(false)}
-                                                disabled={loadingEdit}
-                                            >
-                                                Отмена
-                                            </button>
-                                        </div>
+                                        <button 
+                                            className="btn btn-sm btn-success me-1" 
+                                            onClick={handleUpdatePhone}
+                                            disabled={loadingEdit}
+                                        >
+                                            {loadingEdit ? "..." : "✓"}
+                                        </button>
+                                        <button 
+                                            className="btn btn-sm btn-secondary" 
+                                            onClick={() => setEditingPhone(false)}
+                                            disabled={loadingEdit}
+                                        >
+                                            ✗
+                                        </button>
                                     </div>
                                 ) : (
                                     <>
@@ -274,7 +281,7 @@ const Profile = () => {
                                             className="btn btn-sm btn-outline-primary"
                                             onClick={() => {
                                                 setEditingPhone(true);
-                                                setNewPhone(userData.phone || "");
+                                                setNewPhone(userData.phone);
                                                 setEditingEmail(false);
                                             }}
                                         >
@@ -284,36 +291,33 @@ const Profile = () => {
                                 )}
                             </p>
                             
-                            {/* Редактирование email */}
                             <p className="d-flex align-items-center">
                                 <strong className="me-2">Email:</strong> 
                                 {editingEmail ? (
-                                    <div className="d-flex align-items-center flex-wrap">
+                                    <div className="d-flex align-items-center">
                                         <input 
                                             type="email" 
-                                            className="form-control form-control-sm me-2 mb-1"
-                                            style={{minWidth: '250px'}}
+                                            className="form-control form-control-sm me-2"
+                                            style={{width: '250px'}}
                                             value={newEmail}
                                             onChange={(e) => setNewEmail(e.target.value)}
                                             placeholder={userData.email}
                                             disabled={loadingEdit}
                                         />
-                                        <div>
-                                            <button 
-                                                className="btn btn-sm btn-success me-1 mb-1" 
-                                                onClick={handleUpdateEmail}
-                                                disabled={loadingEdit}
-                                            >
-                                                {loadingEdit ? "Сохранение..." : "Сохранить"}
-                                            </button>
-                                            <button 
-                                                className="btn btn-sm btn-secondary mb-1" 
-                                                onClick={() => setEditingEmail(false)}
-                                                disabled={loadingEdit}
-                                            >
-                                                Отмена
-                                            </button>
-                                        </div>
+                                        <button 
+                                            className="btn btn-sm btn-success me-1" 
+                                            onClick={handleUpdateEmail}
+                                            disabled={loadingEdit}
+                                        >
+                                            {loadingEdit ? "..." : "✓"}
+                                        </button>
+                                        <button 
+                                            className="btn btn-sm btn-secondary" 
+                                            onClick={() => setEditingEmail(false)}
+                                            disabled={loadingEdit}
+                                        >
+                                            ✗
+                                        </button>
                                     </div>
                                 ) : (
                                     <>
@@ -322,7 +326,7 @@ const Profile = () => {
                                             className="btn btn-sm btn-outline-primary"
                                             onClick={() => {
                                                 setEditingEmail(true);
-                                                setNewEmail(userData.email || "");
+                                                setNewEmail(userData.email);
                                                 setEditingPhone(false);
                                             }}
                                         >
@@ -334,8 +338,6 @@ const Profile = () => {
                             
                             <p><strong>Дата регистрации:</strong> {userData.registrationDate}</p>
                             <p><strong>Дней с регистрации:</strong> {calculateDays(userData.registrationDate)}</p>
-                            <p><strong>Найденные животные:</strong> {userData.ordersCount || 0}</p>
-                            <p><strong>Питомцы:</strong> {userData.petsCount || 0}</p>
                         </div>
                         <div className="col-md-4 text-center">
                             <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
