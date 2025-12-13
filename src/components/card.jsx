@@ -159,11 +159,6 @@ const AnimalCard = () => {
                     </div>
                     
                     <div className="d-grid gap-2">
-                        <button className="btn btn-primary btn-lg">
-                            <i className="bi bi-telephone me-2"></i>
-                            Связаться с нашедшим
-                        </button>
-                        
                         <Link to="/search" className="btn btn-outline-secondary">
                             <i className="bi bi-arrow-left me-2"></i>
                             Вернуться к поиску
