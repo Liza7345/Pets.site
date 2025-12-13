@@ -4,6 +4,14 @@ import { useNavigate } from "react-router-dom";
 const Profile = () => {
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [editingPhone, setEditingPhone] = useState(false);
+    const [editingEmail, setEditingEmail] = useState(false);
+    const [newPhone, setNewPhone] = useState("");
+    const [newEmail, setNewEmail] = useState("");
+    const [loadingEdit, setLoadingEdit] = useState(false);
+    const [editError, setEditError] = useState("");
+    const [editSuccess, setEditSuccess] = useState("");
+    const [userId, setUserId] = useState(null); // Добавили отдельное состояние для ID
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -26,6 +34,8 @@ const Profile = () => {
                 }
             });
 
+            console.log("Profile response status:", response.status);
+            
             if (response.status === 401) {
                 localStorage.removeItem("auth_token");
                 navigate("/");
@@ -33,38 +43,145 @@ const Profile = () => {
             }
 
             const data = await response.json();
-            console.log("API Response:", data);
-
+            console.log("Profile API Response:", data);
+            
             // Проверяем структуру
+            let user = null;
             if (data && typeof data === 'object') {
-                // Если есть поле id, name и т.д. - это наш объект пользователя
                 if (data.id && data.name) {
-                    console.log("Нашли объект пользователя");
-                    setUserData(data);
-                } 
-                // Если данные внутри data.user[0]
-                else if (data.data?.user?.[0]) {
-                    console.log("Нашли в data.user[0]");
-                    setUserData(data.data.user[0]);
+                    user = data;
+                } else if (data.data?.user?.[0]) {
+                    user = data.data.user[0];
+                } else if (data.user?.[0]) {
+                    user = data.user[0];
+                } else if (data.data) {
+                    user = data.data;
                 }
-                // Если данные внутри data.user (массив)
-                else if (data.user?.[0]) {
-                    console.log("Нашли в user[0]");
-                    setUserData(data.user[0]);
-                }
-                // Если сам data - это объект пользователя
-                else if (data.data) {
-                    console.log("Нашли в data");
-                    setUserData(data.data);
-                }
-                else {
-                    console.error("Неизвестная структура:", data);
-                }
+            }
+            
+            if (user) {
+                setUserData(user);
+                // Извлекаем ID из объекта пользователя
+                setUserId(user.id || user.user_id || user.userId);
             }
         } catch (err) {
             console.error("Ошибка запроса:", err);
+            setEditError("Ошибка соединения с сервером");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdatePhone = async () => {
+        if (!newPhone.trim() || !userId) {
+            setEditError("ID пользователя не найден или телефон пустой");
+            return;
+        }
+        
+        setLoadingEdit(true);
+        setEditError("");
+        setEditSuccess("");
+        
+        try {
+            const token = localStorage.getItem("auth_token");
+            console.log("Updating phone for user ID:", userId);
+            console.log("Token exists:", !!token);
+            
+            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/users/${userId}/phone`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ phone: newPhone })
+            });
+            
+            console.log("Phone update response status:", response.status);
+            
+            const responseText = await response.text();
+            console.log("Phone update response text:", responseText);
+            
+            let data = {};
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (e) {
+                console.error("Error parsing JSON:", e);
+            }
+            
+            if (response.status === 200) {
+                setEditSuccess("Телефон успешно обновлен");
+                setUserData(prev => ({ ...prev, phone: newPhone }));
+                setEditingPhone(false);
+            } else if (response.status === 422) {
+                setEditError(data.error?.message || "Ошибка валидации телефона");
+            } else if (response.status === 401) {
+                setEditError("Неавторизован. Пожалуйста, войдите снова.");
+                localStorage.removeItem("auth_token");
+                navigate("/");
+            } else {
+                setEditError(`Ошибка сервера: ${response.status}`);
+            }
+        } catch (err) {
+            console.error("Ошибка соединения:", err);
+            setEditError("Ошибка соединения с сервером. Проверьте интернет-соединение.");
+        } finally {
+            setLoadingEdit(false);
+        }
+    };
+
+    const handleUpdateEmail = async () => {
+        if (!newEmail.trim() || !userId) {
+            setEditError("ID пользователя не найден или email пустой");
+            return;
+        }
+        
+        setLoadingEdit(true);
+        setEditError("");
+        setEditSuccess("");
+        
+        try {
+            const token = localStorage.getItem("auth_token");
+            console.log("Updating email for user ID:", userId);
+            
+            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/users/${userId}/email`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ email: newEmail })
+            });
+            
+            console.log("Email update response status:", response.status);
+            
+            const responseText = await response.text();
+            console.log("Email update response text:", responseText);
+            
+            let data = {};
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (e) {
+                console.error("Error parsing JSON:", e);
+            }
+            
+            if (response.status === 200) {
+                setEditSuccess("Email успешно обновлен");
+                setUserData(prev => ({ ...prev, email: newEmail }));
+                setEditingEmail(false);
+            } else if (response.status === 422) {
+                setEditError(data.error?.message || "Ошибка валидации email");
+            } else if (response.status === 401) {
+                setEditError("Неавторизован. Пожалуйста, войдите снова.");
+                localStorage.removeItem("auth_token");
+                navigate("/");
+            } else {
+                setEditError(`Ошибка сервера: ${response.status}`);
+            }
+        } catch (err) {
+            console.error("Ошибка соединения:", err);
+            setEditError("Ошибка соединения с сервером. Проверьте интернет-соединение.");
+        } finally {
+            setLoadingEdit(false);
         }
     };
 
@@ -93,13 +210,128 @@ const Profile = () => {
                 </button>
             </div>
 
+            {/* Отладочная информация */}
+            <div className="alert alert-info mb-3">
+                <small>User ID: {userId || "Не найден"}</small>
+            </div>
+
+            {/* Сообщения об ошибках/успехе */}
+            {editError && (
+                <div className="alert alert-danger alert-dismissible fade show mb-3">
+                    {editError}
+                    <button type="button" className="btn-close" onClick={() => setEditError("")}></button>
+                </div>
+            )}
+            
+            {editSuccess && (
+                <div className="alert alert-success alert-dismissible fade show mb-3">
+                    {editSuccess}
+                    <button type="button" className="btn-close" onClick={() => setEditSuccess("")}></button>
+                </div>
+            )}
+
             <div className="card">
                 <div className="card-body">
                     <div className="row">
                         <div className="col-md-8">
                             <h4>{userData.name}</h4>
-                            <p><strong>Email:</strong> {userData.email}</p>
-                            <p><strong>Телефон:</strong> {userData.phone}</p>
+                            
+                            {/* Редактирование телефона */}
+                            <p className="d-flex align-items-center">
+                                <strong className="me-2">Телефон:</strong> 
+                                {editingPhone ? (
+                                    <div className="d-flex align-items-center flex-wrap">
+                                        <input 
+                                            type="text" 
+                                            className="form-control form-control-sm me-2 mb-1"
+                                            style={{minWidth: '200px'}}
+                                            value={newPhone}
+                                            onChange={(e) => setNewPhone(e.target.value)}
+                                            placeholder={userData.phone}
+                                            disabled={loadingEdit}
+                                        />
+                                        <div>
+                                            <button 
+                                                className="btn btn-sm btn-success me-1 mb-1" 
+                                                onClick={handleUpdatePhone}
+                                                disabled={loadingEdit}
+                                            >
+                                                {loadingEdit ? "Сохранение..." : "Сохранить"}
+                                            </button>
+                                            <button 
+                                                className="btn btn-sm btn-secondary mb-1" 
+                                                onClick={() => setEditingPhone(false)}
+                                                disabled={loadingEdit}
+                                            >
+                                                Отмена
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="me-3">{userData.phone}</span>
+                                        <button 
+                                            className="btn btn-sm btn-outline-primary"
+                                            onClick={() => {
+                                                setEditingPhone(true);
+                                                setNewPhone(userData.phone || "");
+                                                setEditingEmail(false);
+                                            }}
+                                        >
+                                            Изменить
+                                        </button>
+                                    </>
+                                )}
+                            </p>
+                            
+                            {/* Редактирование email */}
+                            <p className="d-flex align-items-center">
+                                <strong className="me-2">Email:</strong> 
+                                {editingEmail ? (
+                                    <div className="d-flex align-items-center flex-wrap">
+                                        <input 
+                                            type="email" 
+                                            className="form-control form-control-sm me-2 mb-1"
+                                            style={{minWidth: '250px'}}
+                                            value={newEmail}
+                                            onChange={(e) => setNewEmail(e.target.value)}
+                                            placeholder={userData.email}
+                                            disabled={loadingEdit}
+                                        />
+                                        <div>
+                                            <button 
+                                                className="btn btn-sm btn-success me-1 mb-1" 
+                                                onClick={handleUpdateEmail}
+                                                disabled={loadingEdit}
+                                            >
+                                                {loadingEdit ? "Сохранение..." : "Сохранить"}
+                                            </button>
+                                            <button 
+                                                className="btn btn-sm btn-secondary mb-1" 
+                                                onClick={() => setEditingEmail(false)}
+                                                disabled={loadingEdit}
+                                            >
+                                                Отмена
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="me-3">{userData.email}</span>
+                                        <button 
+                                            className="btn btn-sm btn-outline-primary"
+                                            onClick={() => {
+                                                setEditingEmail(true);
+                                                setNewEmail(userData.email || "");
+                                                setEditingPhone(false);
+                                            }}
+                                        >
+                                            Изменить
+                                        </button>
+                                    </>
+                                )}
+                            </p>
+                            
                             <p><strong>Дата регистрации:</strong> {userData.registrationDate}</p>
                             <p><strong>Дней с регистрации:</strong> {calculateDays(userData.registrationDate)}</p>
                             <p><strong>Найденные животные:</strong> {userData.ordersCount || 0}</p>
