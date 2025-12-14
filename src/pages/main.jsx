@@ -60,7 +60,6 @@ const Main = () => {
     <div className="container">
       <div className="newsletter-content">
         <div className="newsletter-icon">
-          <i className="bi bi-envelope-heart-fill"></i>
         </div>
         <h2 className="mb-3">Подпишитесь на новости</h2>
         <p className="lead mb-4">
