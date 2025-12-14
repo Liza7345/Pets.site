@@ -1,6 +1,7 @@
 import React from "react";
 import Slider from "../components/slider";
 import { Link } from "react-router-dom";
+import NewsletterSubscription from "../components/NewsletterSubscription";
 const Main = () => {
   return (
     <div>
@@ -52,6 +53,21 @@ const Main = () => {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+  <section className="newsletter-section">
+    <div className="container">
+      <div className="newsletter-content">
+        <div className="newsletter-icon">
+          <i className="bi bi-envelope-heart-fill"></i>
+        </div>
+        <h2 className="mb-3">Подпишитесь на новости</h2>
+        <p className="lead mb-4">
+          Будьте в курсе последних новостей о животных.
+          Получайте полезные советы по уходу за питомцами.
+        </p>
+        <NewsletterSubscription />
       </div>
     </div>
   </section>
