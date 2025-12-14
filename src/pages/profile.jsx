@@ -1,5 +1,7 @@
+// scr/pages/profile.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import UserOrders from "../components/UserOrders";
 
 const Profile = () => {
     const [userData, setUserData] = useState(null);
@@ -33,32 +35,18 @@ const Profile = () => {
             }
 
             const data = await response.json();
-            console.log("API Response:", data);
-
-            // Проверяем структуру
             if (data && typeof data === 'object') {
-                // Если есть поле id, name и т.д. - это наш объект пользователя
                 if (data.id && data.name) {
-                    console.log("Нашли объект пользователя");
                     setUserData(data);
                 } 
-                // Если данные внутри data.user[0]
                 else if (data.data?.user?.[0]) {
-                    console.log("Нашли в data.user[0]");
                     setUserData(data.data.user[0]);
                 }
-                // Если данные внутри data.user (массив)
                 else if (data.user?.[0]) {
-                    console.log("Нашли в user[0]");
                     setUserData(data.user[0]);
                 }
-                // Если сам data - это объект пользователя
                 else if (data.data) {
-                    console.log("Нашли в data");
                     setUserData(data.data);
-                }
-                else {
-                    console.error("Неизвестная структура:", data);
                 }
             }
         } catch (err) {
@@ -93,7 +81,7 @@ const Profile = () => {
                 </button>
             </div>
 
-            <div className="card">
+            <div className="card mb-4">
                 <div className="card-body">
                     <div className="row">
                         <div className="col-md-8">
@@ -119,6 +107,9 @@ const Profile = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Секция с объявлениями пользователя */}
+            <UserOrders />
         </div>
     );
 };

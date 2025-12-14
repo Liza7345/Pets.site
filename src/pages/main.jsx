@@ -23,41 +23,6 @@ const Main = () => {
     </div>
   </section>
   <Slider/>
-  {/* Секция с карточками */}
-  <section className="py-5">
-    <div className="container">
-      <h2 className="text-center mb-5">Наши услуги</h2>
-      <div className="row g-4">
-        <div className="col-md-4">
-          <div className="card feature-card h-100">
-            <div className="card-body text-center p-4">
-              <i className="bi bi-house-door-fill text-primary display-4 mb-3" />
-              <h5 className="card-title">Передержка</h5>
-              <p className="card-text">Надежные ситтеры позаботятся о вашем питомце, пока вас нет дома.</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div className="card feature-card h-100">
-            <div className="card-body text-center p-4">
-              <i className="bi bi-bicycle text-success display-4 mb-3" />
-              <h5 className="card-title">Выгул собак</h5>
-              <p className="card-text">Активные прогулки для вашего питомца в удобное для вас время.</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div className="card feature-card h-100">
-            <div className="card-body text-center p-4">
-              <i className="bi bi-heart-pulse text-danger display-4 mb-3" />
-              <h5 className="card-title">Ветеринарная помощь</h5>
-              <p className="card-text">Квалифицированные ветеринары окажут помощь вашему питомцу.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
   <section className="newsletter-section">
     <div className="container">
       <div className="newsletter-content">
