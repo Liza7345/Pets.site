@@ -12,7 +12,14 @@ const Profile = () => {
     const navigate = useNavigate();
 
     useEffect(() => { fetchUserProfile(); }, []);
-
+    useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+        navigate('/login');
+        return;
+    }
+    fetchUserProfile();
+}, [navigate]);
     const fetchUserProfile = async () => {
         const token = localStorage.getItem("auth_token");
         if (!token) return navigate("/");
@@ -199,6 +206,8 @@ const Profile = () => {
                             {renderEditableField("email", "Email")}
                             <p><strong>Дата регистрации:</strong> {userData.registrationDate}</p>
                             <p><strong>Дней с регистрации:</strong> {calculateDays(userData.registrationDate)}</p>
+                            <p><strong>Найденные животные:</strong> {userData.ordersCount || 0}</p>
+                            <p><strong>Питомцы:</strong> {userData.petsCount || 0}</p>
                         </div>
                         <div className="col-md-4 text-center">
                             <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 

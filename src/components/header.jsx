@@ -52,6 +52,16 @@ const Header = () => {
         setTimeout(() => setShowSuggestions(false), 200);
     };
 
+    // Функция для проверки авторизации при переходе в профиль
+    const handleProfileClick = (e) => {
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+            e.preventDefault();
+            navigate('/login');
+        }
+        // Если токен есть - переход по ссылке произойдет автоматически
+    };
+
     return (
         <nav className="navbar navbar-expand-lg navbar-light bg-light">
             <div className="container">
@@ -71,7 +81,14 @@ const Header = () => {
                             <Link className="nav-link" to="/search">Поиск животных</Link>
                         </li>
                         <li className="nav-item">
-                            <Link className="nav-link" to="/profile">Личный кабинет</Link>
+                            {/* Изменяем обработчик для ссылки "Личный кабинет" */}
+                            <Link 
+                                className="nav-link" 
+                                to="/profile"
+                                onClick={handleProfileClick}
+                            >
+                                Личный кабинет
+                            </Link>
                         </li>
                     </ul>
                     
@@ -108,6 +125,7 @@ const Header = () => {
                         )}
                     </form>
                     
+                    {/* Кнопка "Вход" остается без изменений */}
                     <button type="button" className="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#loginModal">
                         Вход
                     </button>

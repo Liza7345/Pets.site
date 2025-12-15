@@ -9,6 +9,11 @@ const Login = () => {
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
+    // Функция для уведомления Header об изменении авторизации
+    const notifyAuthChange = () => {
+        window.dispatchEvent(new Event('authChange'));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -33,8 +38,9 @@ const Login = () => {
 
             if (response.ok && data.data?.token) {
                 localStorage.setItem("auth_token", data.data.token);
+                // Уведомляем о изменении авторизации
+                notifyAuthChange();
                 navigate("/profile");
-                window.location.reload();
             } else {
                 setError(data.error?.message || data.message || "Ошибка входа");
             }
@@ -91,6 +97,15 @@ const Login = () => {
                                 >
                                     {loading ? "Вход..." : "Войти"}
                                 </button>
+                                
+                                <div className="text-center mt-3">
+                                    <p className="mb-0">
+                                        Нет аккаунта?{" "}
+                                        <a href="/register" className="text-decoration-none">
+                                            Зарегистрироваться
+                                        </a>
+                                    </p>
+                                </div>
                             </form>
                         </div>
                     </div>
