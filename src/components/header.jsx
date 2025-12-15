@@ -33,10 +33,6 @@ const Header = () => {
           <Link className="nav-link" to="/profile">Личный кабинет</Link>
         </li>
       </ul>
-      <form className="d-flex">
-        <input className="form-control me-2" type="search" placeholder="Поиск" aria-label="Search" />
-        <button className="btn btn-outline-primary" type="submit">Найти</button>
-      </form>
       <button type="button" className="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#loginModal">
         Вход
       </button>
