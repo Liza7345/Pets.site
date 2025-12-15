@@ -1,48 +1,103 @@
-import React from "react";
+// src/pages/login.jsx - Минимальная рабочая версия
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  return (
-    <div>
-      <main style={{'minHeight':'70vh'}}>
-<div>
-  <meta charSet="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebPets - Вход</title>
-  <link rel="stylesheet" href="css/bootstrap.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" />
-  <style dangerouslySetInnerHTML={{__html: "\n        .form-container {\n            max-width: 500px;\n            margin: 0 auto;\n            padding: 30px;\n            border-radius: 10px;\n            box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n        }\n        .nav-link {\n            font-weight: 500;\n        }\n    " }} />
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
 
-  {/* Страница входа */}
-  <div className="container py-5">
-    <div className="form-container">
-      <h2 className="text-center mb-4">Вход в личный кабинет</h2>
-      <form>
-        <div className="mb-3">
-          <label htmlFor="loginEmail" className="form-label">Email или логин</label>
-          <input type="text" className="form-control" id="loginEmail" placeholder="Введите email или логин" />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="loginPassword" className="form-label">Пароль</label>
-          <input type="password" className="form-control" id="loginPassword" placeholder="Введите пароль" />
-        </div>
-        <div className="mb-3 form-check">
-          <input type="checkbox" className="form-check-input" id="rememberCheck" />
-          <label className="form-check-label" htmlFor="rememberCheck">Запомнить меня</label>
-        </div>
-        <div className="d-grid">
-          <a href="profile.html" className="btn btn-primary">Войти</a>
-        </div>
-        <div className="text-center mt-3">
-          <a href="register.html">Нет аккаунта? Зарегистрируйтесь</a>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
 
-      </main>
-    </div>
-  );
-}
+        try {
+            const urlencoded = new URLSearchParams();
+            urlencoded.append("email", email);
+            urlencoded.append("password", password);
+
+            const response = await fetch("https://pets.xn--80ahdri7a.site/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json",
+                },
+                body: urlencoded,
+            });
+
+            const data = await response.json();
+            console.log("Ответ сервера:", data);
+
+            if (response.ok && data.data?.token) {
+                localStorage.setItem("auth_token", data.data.token);
+                navigate("/profile");
+                window.location.reload();
+            } else {
+                setError(data.error?.message || data.message || "Ошибка входа");
+            }
+        } catch (err) {
+            setError("Ошибка соединения с сервером");
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="container py-5">
+            <div className="row justify-content-center">
+                <div className="col-md-6">
+                    <div className="card">
+                        <div className="card-header">
+                            <h3 className="text-center mb-0">Вход</h3>
+                        </div>
+                        <div className="card-body">
+                            {error && (
+                                <div className="alert alert-danger">
+                                    {error}
+                                </div>
+                            )}
+                            
+                            <form onSubmit={handleSubmit}>
+                                <div className="mb-3">
+                                    <label className="form-label">Email</label>
+                                    <input
+                                        type="email"
+                                        className="form-control"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="mb-3">
+                                    <label className="form-label">Пароль</label>
+                                    <input
+                                        type="password"
+                                        className="form-control"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary w-100"
+                                    disabled={loading}
+                                >
+                                    {loading ? "Вход..." : "Войти"}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default Login;
