@@ -43,6 +43,13 @@ const Slider = () => {
         return `https://pets.xn--80ahdri7a.site${imagePath}`;
     };
 
+    // Добавляем стили для черных стрелок
+    const carouselControlStyle = {
+        filter: "invert(1) brightness(0)",
+        width: "40px",
+        height: "40px",
+    };
+
     if (loading) {
         return (
             <section className="py-5">
@@ -100,6 +107,7 @@ const Slider = () => {
                                 className={index === 0 ? "active" : ""} 
                                 aria-current={index === 0 ? "true" : undefined}
                                 aria-label={`Slide ${index + 1}`}
+                                style={{ backgroundColor: '#000' }}
                             />
                         ))}
                     </div>
@@ -134,11 +142,19 @@ const Slider = () => {
                         ))}
                     </div>
                     <button className="carousel-control-prev" type="button" data-bs-target="#animalsCarousel" data-bs-slide="prev">
-                        <span className="carousel-control-prev-icon" aria-hidden="true" />
+                        <span 
+                            className="carousel-control-prev-icon" 
+                            aria-hidden="true"
+                            style={carouselControlStyle}
+                        />
                         <span className="visually-hidden">Предыдущий</span>
                     </button>
                     <button className="carousel-control-next" type="button" data-bs-target="#animalsCarousel" data-bs-slide="next">
-                        <span className="carousel-control-next-icon" aria-hidden="true" />
+                        <span 
+                            className="carousel-control-next-icon" 
+                            aria-hidden="true"
+                            style={carouselControlStyle}
+                        />
                         <span className="visually-hidden">Следующий</span>
                     </button>
                 </div>
