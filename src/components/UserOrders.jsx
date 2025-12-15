@@ -1,258 +1,203 @@
-// scr/components/UserOrders.jsx
+// scr/components/UserOrders.jsx - компактная версия
 import React, { useState, useEffect } from "react";
 
 const UserOrders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
     const [editingOrder, setEditingOrder] = useState(null);
-    const [editForm, setEditForm] = useState({
-        description: "",
-        mark: "",
-        photo1: null,
-        photo2: null,
-        photo3: null
-    });
-
-    const statusColors = {
-        active: "success",
-        wasFound: "info",
-        onModeration: "warning",
-        archive: "secondary"
-    };
-
-    const statusLabels = {
-        active: "Активное",
-        wasFound: "Хозяин найден",
-        onModeration: "На модерации",
-        archive: "В архиве"
-    };
+    const [editForm, setEditForm] = useState({ description: "", mark: "", photos: [null, null, null] });
+    const [imagePreviews, setImagePreviews] = useState([null, null, null]);
 
     const fetchOrders = async () => {
         const token = localStorage.getItem("auth_token");
         if (!token) return;
-
         setLoading(true);
         try {
-            const response = await fetch("https://pets.xn--80ahdri7a.site/api/users/orders", {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
+            const res = await fetch("https://pets.xn--80ahdri7a.site/api/users/orders", {
+                headers: { "Authorization": `Bearer ${token}` }
             });
-
-            if (response.status === 204) {
-                setOrders([]);
-                setLoading(false);
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error(`Ошибка ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data.data?.orders) {
-                setOrders(data.data.orders);
-            } else {
-                setOrders([]);
+            if (res.ok && res.status !== 204) {
+                const data = await res.json();
+                setOrders(data.data?.orders || []);
             }
         } catch (err) {
-            setError("Ошибка загрузки объявлений");
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchOrders();
-    }, []);
-
-    const handleDelete = async (id) => {
-        if (!window.confirm("Вы уверены, что хотите удалить это объявление?")) return;
-
-        const token = localStorage.getItem("auth_token");
-        try {
-            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/users/orders/${id}`, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
-
-            if (response.ok) {
-                setOrders(orders.filter(order => order.id !== id));
-            } else if (response.status === 403) {
-                alert("Нельзя удалить объявление с текущим статусом");
-            } else {
-                const data = await response.json();
-                alert(data.error?.message || "Ошибка удаления");
-            }
-        } catch (err) {
-            console.error("Ошибка:", err);
-        }
-    };
+    useEffect(() => { fetchOrders(); }, []);
 
     const handleEdit = (order) => {
+        if (!["active", "onModeration"].includes(order.status)) {
+            alert("Редактирование недоступно для текущего статуса");
+            return;
+        }
         setEditingOrder(order.id);
-        setEditForm({
-            description: order.description || "",
-            mark: order.mark || "",
-            photo1: null,
-            photo2: null,
-            photo3: null
+        setEditForm({ 
+            description: order.description || "", 
+            mark: order.mark || "", 
+            photos: [null, null, null] 
         });
+        
+        const previews = [];
+        if (Array.isArray(order.photos)) {
+            order.photos.slice(0, 3).forEach(photo => previews.push(getImageUrl(photo)));
+        } else if (order.photos) {
+            previews[0] = getImageUrl(order.photos);
+        }
+        setImagePreviews(previews);
     };
 
     const handleEditSubmit = async (id) => {
         const token = localStorage.getItem("auth_token");
-        const formData = new FormData();
+        if (!token) return;
         
+        const formData = new FormData();
         formData.append("description", editForm.description);
         formData.append("mark", editForm.mark);
-        if (editForm.photo1) formData.append("photo1", editForm.photo1);
-        if (editForm.photo2) formData.append("photo2", editForm.photo2);
-        if (editForm.photo3) formData.append("photo3", editForm.photo3);
+        editForm.photos.forEach((photo, i) => photo && formData.append(`photo${i+1}`, photo));
 
         try {
-            const response = await fetch(`https://pets.xn--80ahdri7a.site/api/pets/${id}`, {
+            const res = await fetch(`https://pets.xn--80ahdri7a.site/api/pets/${id}`, {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
+                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
-
-            if (response.ok) {
+            
+            if (res.ok) {
                 setEditingOrder(null);
-                fetchOrders(); // Обновляем список
-            } else if (response.status === 403) {
-                alert("Нельзя редактировать объявление с текущим статусом");
-            } else {
-                const data = await response.json();
-                alert(data.error?.message || "Ошибка редактирования");
+                fetchOrders();
+                alert("Объявление обновлено");
+            } else if (res.status === 403) {
+                alert("Нельзя редактировать с текущим статусом");
             }
         } catch (err) {
-            console.error("Ошибка:", err);
+            console.error(err);
         }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Удалить объявление?")) return;
+        const token = localStorage.getItem("auth_token");
+        try {
+            const res = await fetch(`https://pets.xn--80ahdri7a.site/api/users/orders/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setOrders(orders.filter(o => o.id !== id));
+                alert("Удалено");
+            } else if (res.status === 403) {
+                alert("Нельзя удалить с текущим статусом");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleFileChange = (e, index) => {
+        const file = e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        
+        const newPhotos = [...editForm.photos];
+        newPhotos[index] = file;
+        setEditForm({ ...editForm, photos: newPhotos });
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const newPreviews = [...imagePreviews];
+            newPreviews[index] = reader.result;
+            setImagePreviews(newPreviews);
+        };
+        reader.readAsDataURL(file);
     };
 
     const getImageUrl = (photo) => {
         if (!photo) return "https://via.placeholder.com/150x150?text=Нет+фото";
-        if (photo.startsWith("http")) return photo;
-        return `https://pets.xn--80ahdri7a.site${photo}`;
+        return photo.startsWith("http") ? photo : `https://pets.xn--80ahdri7a.site${photo}`;
     };
 
-    if (loading) {
-        return (
-            <div className="card">
-                <div className="card-body text-center">
-                    <div className="spinner-border" role="status">
-                        <span className="visually-hidden">Загрузка...</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    const statusBadge = (status) => {
+        const colors = { active: "success", wasFound: "info", onModeration: "warning", archive: "secondary" };
+        const labels = { active: "Активное", wasFound: "Найдено", onModeration: "На модерации", archive: "В архиве" };
+        return <span className={`badge bg-${colors[status] || 'secondary'}`}>{labels[status] || status}</span>;
+    };
+
+    if (loading) return <div className="text-center"><div className="spinner-border"></div></div>;
 
     return (
         <div className="card">
-            <div className="card-header">
-                <h4 className="mb-0">Мои объявления</h4>
-            </div>
+            <div className="card-header"><h4 className="mb-0">Мои объявления</h4></div>
             <div className="card-body">
-                {error && <div className="alert alert-danger">{error}</div>}
-                
                 {orders.length === 0 ? (
-                    <div className="alert alert-info">
-                        У вас пока нет добавленных объявлений
-                    </div>
+                    <div className="alert alert-info">Нет объявлений</div>
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-hover">
                             <thead>
-                                <tr>
-                                    <th>Фото</th>
-                                    <th>Вид</th>
-                                    <th>Описание</th>
-                                    <th>Район</th>
-                                    <th>Дата</th>
-                                    <th>Статус</th>
-                                    <th>Действия</th>
-                                </tr>
+                                <tr><th>Фото</th><th>Вид</th><th>Описание</th><th>Статус</th><th>Действия</th></tr>
                             </thead>
                             <tbody>
                                 {orders.map(order => (
                                     <tr key={order.id}>
                                         <td>
-                                            <img 
-                                                src={getImageUrl(order.photos)} 
-                                                alt={order.kind} 
-                                                style={{width: '80px', height: '80px', objectFit: 'cover'}}
-                                            />
+                                            <img src={getImageUrl(order.photos)} alt={order.kind} 
+                                                 style={{width: '80px', height: '80px', objectFit: 'cover'}} />
                                         </td>
                                         <td>{order.kind}</td>
-                                        <td>
+                                        <td style={{ minWidth: '200px' }}>
                                             {editingOrder === order.id ? (
-                                                <textarea 
-                                                    className="form-control form-control-sm"
-                                                    value={editForm.description}
-                                                    onChange={e => setEditForm({...editForm, description: e.target.value})}
-                                                    rows="3"
-                                                />
-                                            ) : (
-                                                <div style={{maxWidth: '200px'}}>
-                                                    {order.description || "Нет описания"}
-                                                </div>
-                                            )}
+                                                <textarea className="form-control form-control-sm" rows="3"
+                                                          value={editForm.description}
+                                                          onChange={e => setEditForm({...editForm, description: e.target.value})} />
+                                            ) : (order.description || <span className="text-muted">Нет описания</span>)}
                                         </td>
-                                        <td>{order.district}</td>
-                                        <td>{order.date}</td>
-                                        <td>
-                                            <span className={`badge bg-${statusColors[order.status] || 'secondary'}`}>
-                                                {statusLabels[order.status] || order.status}
-                                            </span>
-                                        </td>
-                                        <td>
+                                        <td>{statusBadge(order.status)}</td>
+                                        <td style={{ minWidth: '150px' }}>
                                             {editingOrder === order.id ? (
-                                                <div className="btn-group btn-group-sm">
-                                                    <button 
-                                                        className="btn btn-success"
-                                                        onClick={() => handleEditSubmit(order.id)}
-                                                    >
-                                                        Сохранить
-                                                    </button>
-                                                    <button 
-                                                        className="btn btn-secondary"
-                                                        onClick={() => setEditingOrder(null)}
-                                                    >
-                                                        Отмена
-                                                    </button>
+                                                <div>
+                                                    <div className="mb-2">
+                                                        <label className="form-label small">Фотографии:</label>
+                                                        <div className="d-flex gap-1">
+                                                            {[0,1,2].map(i => (
+                                                                <div key={i} className="position-relative">
+                                                                    <img src={imagePreviews[i] || "https://via.placeholder.com/50x50"}
+                                                                         className="img-thumbnail" style={{width: '50px', height: '50px'}} />
+                                                                    <input type="file" accept="image/*" className="form-control form-control-sm"
+                                                                           onChange={(e) => handleFileChange(e, i)} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mb-2">
+                                                        <input type="text" className="form-control form-control-sm"
+                                                               placeholder="Клеймо" value={editForm.mark}
+                                                               onChange={e => setEditForm({...editForm, mark: e.target.value})} />
+                                                    </div>
+                                                    <div className="btn-group btn-group-sm w-100">
+                                                        <button className="btn btn-success" onClick={() => handleEditSubmit(order.id)}>
+                                                            Сохранить
+                                                        </button>
+                                                        <button className="btn btn-secondary" onClick={() => setEditingOrder(null)}>
+                                                            Отмена
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="btn-group btn-group-sm">
-                                                    {["active", "onModeration"].includes(order.status) && (
+                                                    {["active", "onModeration"].includes(order.status) ? (
                                                         <>
-                                                            <button 
-                                                                className="btn btn-outline-primary"
-                                                                onClick={() => handleEdit(order)}
-                                                            >
+                                                            <button className="btn btn-outline-primary" onClick={() => handleEdit(order)}>
                                                                 Редактировать
                                                             </button>
-                                                            <button 
-                                                                className="btn btn-outline-danger"
-                                                                onClick={() => handleDelete(order.id)}
-                                                            >
+                                                            <button className="btn btn-outline-danger" onClick={() => handleDelete(order.id)}>
                                                                 Удалить
                                                             </button>
                                                         </>
-                                                    )}
-                                                    {!["active", "onModeration"].includes(order.status) && (
-                                                        <span className="text-muted small">
-                                                            Редактирование недоступно
-                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted small">Только просмотр</span>
                                                     )}
                                                 </div>
                                             )}
