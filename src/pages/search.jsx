@@ -1,9 +1,14 @@
-// src/pages/search.jsx - компактная версия
+// src/pages/search.jsx - Сокращенная версия
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 const Search = () => {
-    const [filters, setFilters] = useState({ district: "", kind: "", quick: "" });
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [filters, setFilters] = useState({ 
+        district: "", 
+        kind: "", 
+        quick: searchParams.get("query") || "" 
+    });
     const [animals, setAnimals] = useState([]);
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -21,14 +26,13 @@ const Search = () => {
         setLoading(true);
         try {
             const res = await fetch(url);
-            if (res.status === 204) setAnimals([]);
-            else if (res.ok) {
+            if (res.status === 204) {
+                setAnimals([]);
+            } else if (res.ok) {
                 const data = await res.json();
-                const orders = data.data?.orders || data.orders || data || [];
-                setAnimals(Array.isArray(orders) ? orders : []);
+                setAnimals(data.data?.orders || data.orders || data || []);
             }
         } catch (e) {
-            console.error(e);
             setAnimals([]);
         } finally {
             setLoading(false);
@@ -37,11 +41,10 @@ const Search = () => {
     };
 
     // Быстрый поиск с подсказками
-    const quickSearch = async (query) => {
+    const quickSearch = (query) => {
         if (!query.trim()) return fetchAll();
         
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        
+        clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(async () => {
             // Подсказки
             if (query.length >= 3) {
@@ -52,25 +55,45 @@ const Search = () => {
                 } catch (e) {}
             }
             
-            // Результаты
+            setSearchParams({ query });
             search(`https://pets.xn--80ahdri7a.site/api/search?query=${encodeURIComponent(query)}`);
         }, 1000);
     };
 
-    const fetchAll = () => search("https://pets.xn--80ahdri7a.site/api/search/order");
-    useEffect(() => { fetchAll(); }, []);
+    const fetchAll = () => {
+        const queryFromURL = searchParams.get("query");
+        if (queryFromURL) {
+            search(`https://pets.xn--80ahdri7a.site/api/search?query=${encodeURIComponent(queryFromURL)}`);
+            setFilters(prev => ({ ...prev, quick: queryFromURL }));
+        } else {
+            search("https://pets.xn--80ahdri7a.site/api/search/order");
+        }
+    };
+
+    useEffect(() => {
+        fetchAll();
+    }, [searchParams]);
 
     const handleFilterSearch = () => {
         const params = new URLSearchParams();
         if (filters.district) params.append("district", filters.district);
         if (filters.kind) params.append("kind", filters.kind);
+        if (filters.quick) params.append("query", filters.quick);
+        
+        setSearchParams(params);
         search(`https://pets.xn--80ahdri7a.site/api/search/order?${params}`);
     };
 
     const resetAll = () => {
         setFilters({ district: "", kind: "", quick: "" });
+        setSearchParams({});
         setSuggestions([]);
-        fetchAll();
+        search("https://pets.xn--80ahdri7a.site/api/search/order");
+    };
+
+    const handleQuickChange = (value) => {
+        setFilters(prev => ({ ...prev, quick: value }));
+        quickSearch(value);
     };
 
     // Рендер
@@ -91,89 +114,121 @@ const Search = () => {
                             className="form-control"
                             placeholder="Введите минимум 3 символа..."
                             value={filters.quick}
-                            onChange={e => {
-                                const val = e.target.value;
-                                setFilters({...filters, quick: val});
-                                quickSearch(val);
-                            }}
+                            onChange={e => handleQuickChange(e.target.value)}
                         />
                         {suggestions.length > 0 && filters.quick.length >= 3 && (
                             <div className="dropdown-menu show w-100">
                                 {suggestions.map((s, i) => (
-                                    <button key={i} className="dropdown-item small"
-                                        onClick={() => {
-                                            setFilters({...filters, quick: s.description});
-                                            search(`https://pets.xn--80ahdri7a.site/api/search?query=${encodeURIComponent(s.description)}`);
-                                            setSuggestions([]);
-                                        }}>
+                                    <button 
+                                        key={i} 
+                                        className="dropdown-item small"
+                                        type="button"
+                                        onClick={() => handleQuickChange(s.description)}
+                                    >
                                         {s.description?.substring(0, 80)}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
-                    <small className="text-muted">Подсказки появятся после 3-х символов</small>
                 </div>
             </div>
 
             {/* Фильтры */}
             <div className="row mb-4">
                 <div className="col-md-8 mx-auto">
-                    <input type="text" className="form-control mb-2" placeholder="Район"
-                        value={filters.district} onChange={e => setFilters({...filters, district: e.target.value})} />
-                    <input type="text" className="form-control mb-2" placeholder="Вид животного"
-                        value={filters.kind} onChange={e => setFilters({...filters, kind: e.target.value})} />
+                    <input 
+                        type="text" 
+                        className="form-control mb-2" 
+                        placeholder="Район"
+                        value={filters.district} 
+                        onChange={e => setFilters(prev => ({ ...prev, district: e.target.value }))} 
+                    />
+                    <input 
+                        type="text" 
+                        className="form-control mb-2" 
+                        placeholder="Вид животного"
+                        value={filters.kind} 
+                        onChange={e => setFilters(prev => ({ ...prev, kind: e.target.value }))} 
+                    />
                     <div className="d-flex gap-2">
-                        <button className="btn btn-primary flex-grow-1" onClick={handleFilterSearch}>
+                        <button 
+                            className="btn btn-primary flex-grow-1" 
+                            onClick={handleFilterSearch}
+                            disabled={loading}
+                        >
                             {loading ? "..." : "Поиск"}
                         </button>
-                        <button className="btn btn-outline-secondary" onClick={resetAll}>Сбросить</button>
+                        <button 
+                            className="btn btn-outline-secondary" 
+                            onClick={resetAll}
+                        >
+                            Сбросить
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Результаты */}
-            {loading ? <div className="text-center"><div className="spinner-border"></div></div> :
-             animals.length === 0 ? <div className="alert alert-info">Ничего не найдено</div> :
-             <>
-                <h5>Найдено: {animals.length}</h5>
-                <div className="row">
-                    {currentAnimals.map(a => (
-                        <div className="col-lg-4 col-md-6 mb-4" key={a.id}>
-                            <div className="card h-100">
-                                <img src={getImageUrl(a.photos || a.image)} className="card-img-top" alt={a.kind}
-                                    style={{height: '200px', objectFit: 'cover'}} />
-                                <div className="card-body">
-                                    <h6>{a.kind}</h6>
-                                    <p className="small text-truncate">{a.description}</p>
-                                    <Link to={`/animal/${a.id}`} className="btn btn-sm btn-primary w-100">
-                                        Подробнее
-                                    </Link>
+            {loading ? (
+                <div className="text-center"><div className="spinner-border"></div></div>
+            ) : animals.length === 0 ? (
+                <div className="alert alert-info text-center">
+                    {filters.quick || filters.district || filters.kind 
+                        ? "Ничего не найдено" 
+                        : "Нет доступных животных"}
+                </div>
+            ) : (
+                <>
+                    <h5>Найдено: {animals.length}</h5>
+                    
+                    <div className="row">
+                        {currentAnimals.map(a => (
+                            <div className="col-lg-4 col-md-6 mb-4" key={a.id}>
+                                <div className="card h-100 shadow-sm">
+                                    <img 
+                                        src={getImageUrl(a.photos || a.image)} 
+                                        className="card-img-top" 
+                                        alt={a.kind}
+                                        style={{height: '200px', objectFit: 'cover'}} 
+                                        onError={(e) => e.target.src = "https://via.placeholder.com/300x200"}
+                                    />
+                                    <div className="card-body d-flex flex-column">
+                                        <h6 className="card-title">{a.kind}</h6>
+                                        <p className="card-text small">
+                                            {a.description?.substring(0, 100) || "Нет описания"}
+                                        </p>
+                                        <Link 
+                                            to={`/animal/${a.id}`} 
+                                            className="btn btn-sm btn-primary w-100 mt-auto"
+                                        >
+                                            Подробнее
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
 
-                {totalPages > 1 && (
-                    <nav className="mt-4">
-                        <ul className="pagination justify-content-center">
-                            <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => setPage(p => p-1)}>←</button>
-                            </li>
-                            {[...Array(totalPages)].map((_, i) => (
-                                <li key={i} className={`page-item ${page === i+1 ? 'active' : ''}`}>
-                                    <button className="page-link" onClick={() => setPage(i+1)}>{i+1}</button>
+                    {totalPages > 1 && (
+                        <nav className="mt-4">
+                            <ul className="pagination justify-content-center">
+                                <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
+                                    <button className="page-link" onClick={() => setPage(p => p-1)}>←</button>
                                 </li>
-                            ))}
-                            <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => setPage(p => p+1)}>→</button>
-                            </li>
-                        </ul>
-                    </nav>
-                )}
-             </>
-            }
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <li key={i} className={`page-item ${page === i+1 ? 'active' : ''}`}>
+                                        <button className="page-link" onClick={() => setPage(i+1)}>{i+1}</button>
+                                    </li>
+                                ))}
+                                <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
+                                    <button className="page-link" onClick={() => setPage(p => p+1)}>→</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    )}
+                </>
+            )}
         </div>
     );
 };
