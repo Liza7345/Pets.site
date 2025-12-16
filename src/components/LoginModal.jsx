@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // Добавлен Link
 
 const LoginModal = () => {
     const [user, setUser] = useState({});
@@ -126,6 +126,19 @@ const LoginModal = () => {
                             </div>
                             
                             <button type="submit" className="btn btn-primary w-100">Войти</button>
+                            
+                            {/* Ссылка на регистрацию */}
+                            <div className="text-center mt-3">
+                                <small>
+                                    Нет аккаунта?{' '}
+                                    <Link 
+                                        to="/register" 
+                                        className="text-decoration-none"
+                                    >
+                                        Зарегистрироваться
+                                    </Link>
+                                </small>
+                            </div>
                         </form>
                     </div>
                 </div>
