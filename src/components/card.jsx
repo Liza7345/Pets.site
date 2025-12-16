@@ -32,24 +32,19 @@ const AnimalCard = ({ animal, loading }) => {
     // Создаем массив фотографий, фильтруя null значения
     const getPhotosArray = () => {
         if (Array.isArray(animal.photos)) {
-            // Если это массив - фильтруем null
             return animal.photos.filter(photo => photo !== null && photo !== undefined && photo !== '');
         } else if (animal.photos) {
-            // Если это одиночное фото
             return [animal.photos];
         } else if (animal.photo) {
-            // Проверяем альтернативное поле
             return [animal.photo];
         }
         return [];
     };
 
     const photos = getPhotosArray();
-    
     // Проверяем, нужно ли показывать слайдер
     const hasMultiplePhotos = photos.length > 1;
     const hasPhotos = photos.length > 0;
-
     // Стиль для черных стрелок
     const blackArrowStyle = {
         filter: "invert(1) brightness(0)",
@@ -62,7 +57,7 @@ const AnimalCard = ({ animal, loading }) => {
             <div className="row">
                 <div className="col-md-6">
                     {hasMultiplePhotos ? (
-                        // Карусель для нескольких фотографий
+                        // слайдер для нескольких фотографий
                         <div id="animalCarousel" className="carousel slide" data-bs-ride="carousel">
                             {/* Индикаторы */}
                             <div className="carousel-indicators">
@@ -94,11 +89,6 @@ const AnimalCard = ({ animal, loading }) => {
                                             style={{ 
                                                 height: '700px', 
                                                 objectFit: 'cover',
-                                                borderRadius: '10px'
-                                            }}
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = "https://via.placeholder.com/400x300?text=Нет+изображения";
                                             }}
                                         />
                                     </div>
@@ -135,38 +125,21 @@ const AnimalCard = ({ animal, loading }) => {
                                 <span className="visually-hidden">Следующий</span>
                             </button>
                         </div>
-                    ) : hasPhotos ? (
+                    ) : (
                         // Одиночное изображение, если фото только одно
                         <img 
                             src={getImageUrl(photos[0])} 
                             className="animal-detail-img" 
                             alt={animal.kind} 
                             style={{
-                                width: '100%', 
-                                height: '700px', 
+                                height: '400px', 
                                 objectFit: 'cover', 
-                                borderRadius: '10px'
                             }}
                             onError={(e) => {
                                 e.target.onerror = null;
                                 e.target.src = "https://via.placeholder.com/400x300?text=Нет+изображения";
                             }}
                         />
-                    ) : (
-                        // Если нет фото вообще
-                        <div 
-                            className="d-flex justify-content-center align-items-center bg-light rounded"
-                            style={{
-                                width: '100%', 
-                                height: '700px', 
-                                borderRadius: '10px'
-                            }}
-                        >
-                            <div className="text-center text-muted">
-                                <i className="bi bi-image display-4 d-block mb-3"></i>
-                                <p className="mb-0">Фотография отсутствует</p>
-                            </div>
-                        </div>
                     )}
                     
                     {/* Информация о количестве фото */}

@@ -38,7 +38,7 @@ const Main = () => {
     </div>
   </section>
   <RecentAnimals />
-  <LoginModal />
+  <br></br>
 </div>
 
       </main>
