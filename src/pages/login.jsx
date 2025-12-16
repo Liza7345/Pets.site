@@ -1,4 +1,3 @@
-// src/pages/login.jsx - Минимальная рабочая версия
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
